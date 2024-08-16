@@ -1,0 +1,15 @@
+# depslib dependency file v1.0
+1723821091 source:/home/pi/Project/SimpleServer/main.cpp
+	<iostream>
+	<stdio.h>
+	<stdlib.h>
+	<string.h>
+	<unistd.h>
+	<arpa/inet.h>
+	<sys/socket.h>
+	<netinet/in.h>
+	<ifaddrs.h>
+	<netdb.h>
+	<sys/ioctl.h>
+	<net/if.h>
+
