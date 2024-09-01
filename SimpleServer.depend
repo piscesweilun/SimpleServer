@@ -13,3 +13,18 @@
 	<sys/ioctl.h>
 	<net/if.h>
 
+1724594127 source:/home/william/Project/SimpleServer/main.cpp
+	<iostream>
+	<stdio.h>
+	<stdlib.h>
+	<string.h>
+	<unistd.h>
+	<arpa/inet.h>
+	<sys/socket.h>
+	<netinet/in.h>
+	<ifaddrs.h>
+	<netdb.h>
+	<sys/ioctl.h>
+	<net/if.h>
+	<X11/Xlib.h>
+

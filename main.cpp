@@ -11,6 +11,7 @@
 #include <netdb.h>
 #include <sys/ioctl.h>
 #include <net/if.h>
+#include <X11/Xlib.h>
 
 #define PORT 10120
 #define REPLY_PORT 10121
@@ -117,6 +118,15 @@ int main() {
         exit(EXIT_FAILURE);
     }
 
+    // Create XWindow
+    Display *display;
+    Window root_window;
+    display = XOpenDisplay(NULL);
+    if(display == NULL) {
+        return -1;
+    }
+    root_window = XRootWindow(display, 0);
+
     printf("Listening for UDP messages on port %d...\n", PORT);
 
     while (1) {
@@ -128,8 +138,10 @@ int main() {
         buffer[n] = '\0';
         printf("Received message: %s\n", buffer);
 
+        char* cmd = strtok(buffer, " ");
+
         // Check if the message is "HostInfo"
-        if (strcmp(buffer, "HostInfo") == 0) {
+        if (strcmp(cmd, "HostInfo") == 0) {
             char *ip_address = get_ip_address();
             char *mac_address = get_mac_address("eth0"); // Replace "eth0" with the appropriate network interface
             char *host_name = get_host_name();
@@ -150,8 +162,23 @@ int main() {
             // Free the allocated memory
             free(ip_address);
             free(mac_address);
+        } else if(strcmp(cmd, "MoveCursor") == 0) {
+            Window window_returned;
+            int root_x, root_y, win_x, win_y;
+            unsigned int mask_return;
+
+            XQueryPointer(display, root_window, &window_returned, &window_returned, &root_x, &root_y, &win_x, &win_y, &mask_return);
+
+            char* p = strtok(NULL, " ");
+            int offsetX = atoi(p);
+            p = strtok(NULL, " ");
+            int offsetY = atoi(p);
+            XWarpPointer(display, None, root_window, 0, 0, 0, 0, root_x + offsetX, root_y + offsetY);
         }
     }
+
+    XFlush(display);
+    XCloseDisplay(display);
 
     close(sockfd);
     return 0;
