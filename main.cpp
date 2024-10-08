@@ -12,8 +12,9 @@
 #include <sys/ioctl.h>
 #include <net/if.h>
 #include <X11/Xlib.h>
+#include <time.h>
 
-#define PORT 10120
+#define PORT 8890//10120
 #define REPLY_PORT 10121
 #define BUFFER_SIZE 1024
 
@@ -93,6 +94,13 @@ char* get_host_name() {
     return hostname;
 }
 
+
+unsigned long get_tick_count() {
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (ts.tv_sec * 1000 + ts.tv_nsec / 1000000);
+}
+
 int main() {
     int sockfd;
     char buffer[BUFFER_SIZE];
@@ -129,6 +137,23 @@ int main() {
 
     printf("Listening for UDP messages on port %d...\n", PORT);
 
+    unsigned long nextBroadcastTime = 0;
+    struct sockaddr_in s;
+    int broadcastSock = socket(AF_INET, SOCK_DGRAM, 0);
+    int broadcastEnable = 1;
+    setsockopt(broadcastSock, SOL_SOCKET, SO_BROADCAST, &broadcastEnable, sizeof(broadcastEnable));
+    memset(&s, 0, sizeof(struct sockaddr_in));
+    s.sin_family = AF_INET;
+    s.sin_port = htons(8889);
+    s.sin_addr.s_addr = INADDR_BROADCAST;
+
+    // Log
+    time_t now = time(NULL);
+    struct tm *local_time = localtime(&now);
+    char file_name[100];
+    strftime(file_name, sizeof(file_name), "log_%Y-%m-%d_%H-%M-%S.txt", local_time);
+    FILE *logFile;
+
     while (1) {
         // Clear the buffer
         memset(buffer, 0, BUFFER_SIZE);
@@ -136,7 +161,15 @@ int main() {
         // Receive UDP message
         int n = recvfrom(sockfd, buffer, BUFFER_SIZE, 0, (struct sockaddr*)&client_addr, &client_addr_len);
         buffer[n] = '\0';
-        printf("Received message: %s\n", buffer);
+
+        time_t t = time(NULL);
+        struct tm *tm = localtime(&t);
+
+        printf("%02d:%02d:%02d Received message: %s\n", tm->tm_hour, tm->tm_min, tm->tm_sec, buffer);
+
+        logFile = fopen(file_name, "a");
+        fprintf(logFile, "%02d:%02d:%02d Received message: %s\n", tm->tm_hour, tm->tm_min, tm->tm_sec, buffer);
+        fclose(logFile);
 
         char* cmd = strtok(buffer, " ");
 
@@ -175,7 +208,22 @@ int main() {
             int offsetY = atoi(p);
             XWarpPointer(display, None, root_window, 0, 0, 0, 0, root_x + offsetX, root_y + offsetY);
         }
+
+        unsigned long now = get_tick_count();
+        if(now >= nextBroadcastTime) {
+            int len = snprintf(buffer, BUFFER_SIZE, "SERVER:192.168.213.151:8888");
+            sendto(broadcastSock, buffer, len, 0, (const struct sockaddr*)&s, sizeof(s) );
+            nextBroadcastTime = now + 10000;
+
+            printf("    Broadcasting: %s\n", buffer);
+
+            logFile = fopen(file_name, "a");
+            fprintf(logFile, "Broadcasting: %s\n", buffer);
+            fclose(logFile);
+        }
     }
+
+    fclose(logFile);
 
     XFlush(display);
     XCloseDisplay(display);
